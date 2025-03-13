@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Room</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            text-align: center;
+        }
+        .chat-container {
+            max-width: 600px;
+            margin: auto;
+            border: 1px solid #ccc;
+            padding: 10px;
+            height: 400px;
+            overflow-y: auto;
+            background-color: #fff;
+            display: flex;
+            flex-direction: column;
+        }
+        .message {
+            margin: 5px;
+            padding: 10px;
+            border-radius: 10px;
+            max-width: 75%;
+            word-wrap: break-word;
+            display: inline-block;
+            font-size: 14px;
+        }
+        .self {
+            background-color: #dcf8c6; /* Light green */
+            align-self: flex-end;
+            text-align: right;
+        }
+        .other {
+            background-color: #e0e0e0; /* Light grey */
+            align-self: flex-start;
+            text-align: left;
+        }
+        .username {
+            font-weight: bold;
+            font-size: 12px;
+            margin-bottom: 3px;
+            display: block;
+        }
+        .input-container {
+            margin-top: 10px;
+            display: flex;
+            justify-content: center;
+            gap: 5px;
+        }
+        input {
+            width: 70%;
+            padding: 8px;
+            font-size: 14px;
+        }
+        button {
+            padding: 8px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>User: {{ room_name }}</h1>
+
+    <div class="chat-container" id="chat-messages"></div>
+
+    <div class="input-container">
+        <input id="chat-message-input" type="text" placeholder="Type a message..." />
+        <button id="chat-message-submit">Send</button>
+    </div>
+
+    <script>
+        const roomName = "{{ room_name }}";
+        let username = localStorage.getItem("username");
+
+        if (!username) {
+            username = prompt("Enter your name:");
+            localStorage.setItem("username", username);
+        }
+
+        // WebSocket connection
+        const chatSocket = new WebSocket(
+            (window.location.protocol === "https:" ? "wss://" : "ws://") +
+            window.location.host +
+            "/ws/chat/" +
+            roomName +
+            "/"
+        );
+
+        // Receive messages
+        chatSocket.onmessage = function(e) {
+            const data = JSON.parse(e.data);
+            const messageElement = document.createElement("div");
+
+            
+            const senderName = data.username ? data.username : "Anonymous";
+
+            if (senderName === username) {
+                messageElement.className = "message self";
+            } else {
+                messageElement.className = "message other";
+            }
+
+            messageElement.innerHTML =  `${data.message}`;
+            document.querySelector("#chat-messages").appendChild(messageElement);
+        };
+
+        // Send messages
+        document.querySelector("#chat-message-submit").onclick = function() {
+            const messageInput = document.querySelector("#chat-message-input");
+            const message = messageInput.value.trim();
+            
+            if (message !== "") {
+                chatSocket.send(JSON.stringify({
+                    "message": message,
+                    "username": username  
+                }));
+                messageInput.value = "";
+            }
+        };
+
+        // Close WebSocket on page unload
+        window.onbeforeunload = function() {
+            chatSocket.close();
+        };
+    </script>
+
+</body>
+</html>
